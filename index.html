@@ -1,0 +1,1009 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GBoS GEOAI | Urban Analytics Intelligence</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
+
+<style>
+:root {
+ --bg:#081321;
+ --panel:#101f31;
+ --panel2:#172a40;
+ --line:#293d53;
+ --text:#e9f1fa;
+ --muted:#91a5bb;
+ --cyan:#39d5cc;
+ --blue:#4d9ef0;
+ --orange:#f4a64e;
+ --green:#6bd5a0;
+}
+*{box-sizing:border-box}
+body{
+ margin:0;background:var(--bg);color:var(--text);
+ font-family:Arial,Helvetica,sans-serif;font-size:13px
+}
+header{
+ height:75px;background:#0b192a;border-bottom:1px solid var(--line);
+ display:flex;align-items:center;justify-content:space-between;padding:12px 20px
+}
+.brand{color:var(--cyan);font-size:12px;font-weight:800;letter-spacing:2px}
+.brand small{display:block;color:var(--muted);letter-spacing:1px;margin-top:5px}
+h1{font-size:20px;margin:0}
+.status{font-size:10px;color:var(--green);margin-top:5px}
+main{
+ display:grid;
+ grid-template-columns:290px minmax(350px,1fr) 320px;
+ gap:10px;padding:10px;
+ height:calc(100vh - 115px);min-height:650px
+}
+.panel{
+ background:var(--panel);border:1px solid var(--line);
+ border-radius:8px;overflow-y:auto;min-height:0
+}
+.section{padding:13px;border-bottom:1px solid var(--line)}
+.eyebrow{
+ color:var(--cyan);font-size:10px;font-weight:bold;
+ letter-spacing:1.5px;margin-bottom:9px
+}
+h2{font-size:13px;margin:0 0 10px}
+label{display:block;font-size:11px;color:#b9cadd;margin:10px 0 5px}
+select,input,button{
+ width:100%;padding:9px;background:#0a1929;color:var(--text);
+ border:1px solid #344c66;border-radius:5px;font-size:11px
+}
+button{cursor:pointer;font-weight:bold;background:#15364c}
+button.primary{background:#087f83;border-color:#16aaa3}
+button:hover{filter:brightness(1.2)}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}
+.check{display:flex;gap:8px;align-items:center;margin:9px 0}
+.check input{width:auto}
+.mapwrap{position:relative;min-width:0;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+#map{height:100%;width:100%;background:#dbe5e8}
+.maphint{
+ position:absolute;z-index:500;top:12px;left:12px;
+ padding:9px 12px;background:#0b1929e8;border:1px solid #435a73;
+ border-radius:5px;color:white;font-size:10px;max-width:250px;pointer-events:none
+}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kpi{padding:10px;background:var(--panel2);border:1px solid var(--line);border-radius:6px}
+.kpi span{font-size:10px;color:var(--muted);display:block}
+.kpi strong{font-size:20px;display:block;margin-top:5px}
+.chartbox{padding:12px;border-bottom:1px solid var(--line)}
+.charttitle{font-size:10px;font-weight:bold;color:#c6d7e8}
+canvas{width:100%!important;max-height:175px;margin-top:8px}
+table{width:100%;border-collapse:collapse;font-size:10px}
+td,th{padding:7px 4px;text-align:left;border-bottom:1px solid var(--line)}
+th{color:var(--muted)}
+.muted{color:var(--muted);font-size:10px;line-height:1.6}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;font-size:10px;color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+#log{font-size:10px;color:var(--muted);white-space:pre-wrap;line-height:1.6}
+footer{
+ height:40px;padding:10px 17px;border-top:1px solid var(--line);
+ display:flex;justify-content:space-between;color:var(--muted);font-size:10px
+}
+@media(max-width:1050px){
+ main{grid-template-columns:260px 1fr;height:auto}
+ .mapwrap{height:600px}
+ .right{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr}
+}
+@media(max-width:700px){
+ header{height:auto;display:block}
+ h1{margin-top:10px}
+ main{display:flex;flex-direction:column;height:auto}
+ .panel{overflow:visible}
+ .mapwrap{height:480px}
+ .right{display:block}
+ footer{height:auto;gap:8px;flex-wrap:wrap}
+}
+</style>
+</head>
+
+<body>
+
+<header>
+ <div>
+  <div class="brand">GBoS GEOAI • URBAN SYSTEMS</div>
+  <small style="color:#91a5bb">GIS / CARTOGRAPHY UNIT • THE GAMBIA</small>
+ </div>
+ <div>
+  <h1>Urban Analytics Intelligence</h1>
+  <div class="status" id="status">● READY — Urban analysis centre</div>
+ </div>
+</header>
+
+<main>
+
+<!-- LEFT: CONTROLS -->
+<aside class="panel">
+
+ <div class="section">
+  <div class="eyebrow">01 / GEOGRAPHIC DOMAIN</div>
+  <h2>Study area selection</h2>
+
+  <label>Urban study area</label>
+  <select id="preset">
+   <option value="banjul">Banjul</option>
+   <option value="kanifing">Kanifing / Serekunda</option>
+   <option value="brikama">Brikama</option>
+   <option value="lamin">Lamin / Abuko</option>
+   <option value="custom">Custom AOI</option>
+  </select>
+
+  <div class="actions">
+   <button class="primary" id="loadArea">Load area</button>
+   <button id="drawArea">Draw AOI</button>
+  </div>
+
+  <label>Road network classification</label>
+  <select id="roadType">
+   <option value="all">All roads</option>
+   <option value="drive">Motorised roads</option>
+   <option value="walk">Pedestrian and paths</option>
+  </select>
+
+  <label>Context buffer</label>
+  <select id="buffer">
+   <option value="50">50 metres</option>
+   <option value="100" selected>100 metres</option>
+   <option value="250">250 metres</option>
+   <option value="500">500 metres</option>
+  </select>
+ </div>
+
+ <div class="section">
+  <div class="eyebrow">02 / MAP LAYERS</div>
+  <h2>Urban infrastructure</h2>
+
+  <label class="check"><input type="checkbox" id="showRoads" checked> Street network</label>
+  <label class="check"><input type="checkbox" id="showNodes" checked> Intersection nodes</label>
+  <label class="check"><input type="checkbox" id="showBuildings" checked> Building footprints</label>
+  <label class="check"><input type="checkbox" id="showPOI" checked> Points of interest</label>
+  <label class="check"><input type="checkbox" id="showBoundary" checked> Study-area boundary</label>
+
+  <label>Basemap</label>
+  <select id="basemap">
+   <option value="osm">OpenStreetMap</option>
+   <option value="satellite">Satellite</option>
+   <option value="terrain">Terrain</option>
+   <option value="dark">Dark map</option>
+  </select>
+ </div>
+
+ <div class="section">
+  <div class="eyebrow">03 / DATA INPUT</div>
+  <h2>Additional datasets</h2>
+
+  <label>Administrative boundary GeoJSON</label>
+  <input type="file" id="boundaryFile" accept=".geojson,.json">
+
+  <label>Population CSV</label>
+  <input type="file" id="populationFile" accept=".csv">
+
+  <p class="muted">Population data requires a compatible geographic identifier for spatial matching. A simple CSV sum is not an AOI-specific population estimate.</p>
+
+  <div class="actions">
+   <button class="primary" id="run">RUN ANALYSIS</button>
+   <button id="reset">RESET</button>
+  </div>
+ </div>
+
+ <div class="section">
+  <div class="eyebrow">04 / PROCESS LOG</div>
+  <div id="log">Waiting for study area.</div>
+ </div>
+
+ <div class="section">
+  <div class="eyebrow">05 / EXPORT RESULTS</div>
+  <button id="exportCSV">EXPORT STREET CSV</button>
+  <br><br>
+  <button id="exportGeo">EXPORT GEOJSON</button>
+  <br><br>
+  <button id="exportBuildings">EXPORT BUILDINGS</button>
+ </div>
+
+</aside>
+
+<!-- CENTRE: MAP -->
+<section class="mapwrap">
+ <div id="map"></div>
+ <div class="maphint">
+  URBAN NETWORK MAP<br>
+  Select a study area, then run analysis.<br>
+  Data source: OpenStreetMap.
+ </div>
+</section>
+
+<!-- RIGHT: ANALYTICS -->
+<aside class="panel right">
+
+ <div class="section">
+  <div class="eyebrow">06 / SELECTED AREA INDICATORS</div>
+  <h2>Urban analytics summary</h2>
+
+  <div class="kpis">
+   <div class="kpi">
+    <span>Total road length</span>
+    <strong id="roadLength">—</strong>
+    <span>km</span>
+   </div>
+
+   <div class="kpi">
+    <span>Road segments</span>
+    <strong id="roadCount">—</strong>
+    <span>mapped ways</span>
+   </div>
+
+   <div class="kpi">
+    <span>Intersections</span>
+    <strong id="nodeCount">—</strong>
+    <span>estimated nodes</span>
+   </div>
+
+   <div class="kpi">
+    <span>Buildings</span>
+    <strong id="buildingCount">—</strong>
+    <span>mapped footprints</span>
+   </div>
+
+   <div class="kpi">
+    <span>Points of interest</span>
+    <strong id="poiCount">—</strong>
+    <span>amenities and services</span>
+   </div>
+
+   <div class="kpi">
+    <span>Road density</span>
+    <strong id="density">—</strong>
+    <span>km/km²</span>
+   </div>
+  </div>
+
+  <div class="legend">
+   <span><i class="dot" style="background:#e34a4a"></i>Primary</span>
+   <span><i class="dot" style="background:#eab308"></i>Secondary</span>
+   <span><i class="dot" style="background:#3b82f6"></i>Residential</span>
+   <span><i class="dot" style="background:#f4a64e"></i>Buildings</span>
+   <span><i class="dot" style="background:#13b8a6"></i>POIs</span>
+  </div>
+ </div>
+
+ <div class="chartbox">
+  <div class="charttitle">ROAD NETWORK CLASSIFICATION</div>
+  <canvas id="roadChart"></canvas>
+ </div>
+
+ <div class="chartbox">
+  <div class="charttitle">URBAN FEATURE DISTRIBUTION</div>
+  <canvas id="contextChart"></canvas>
+ </div>
+
+ <div class="section">
+  <div class="eyebrow">07 / NETWORK PROFILE</div>
+  <table>
+   <tbody id="profile">
+    <tr><td>Analysis</td><td>Awaiting data</td></tr>
+   </tbody>
+  </table>
+ </div>
+
+ <div class="section">
+  <div class="eyebrow">08 / METHODOLOGY</div>
+  <p class="muted">
+   Street network indicators are derived from OpenStreetMap ways.
+   Network nodes are estimated by snapping road endpoints within
+   approximately 15 metres. This is a simplified connectivity measure,
+   not a complete graph-theoretic centrality analysis.
+   Road density is calculated as total mapped road length divided
+   by the selected polygon area.
+   Buildings and POIs represent mapped OSM features only.
+  </p>
+ </div>
+
+</aside>
+</main>
+
+<footer>
+ <span>Produced by Ansu Singhateh | GIS Analyst | GIS / Cartography Unit | GBoS</span>
+ <span>GBoS GEOAI • Research and educational use</span>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+<script>
+/* =====================================================
+   1. MAP INITIALISATION
+===================================================== */
+
+const map=L.map('map',{preferCanvas:true}).setView([13.4549,-16.579],13);
+
+const basemaps={
+ osm:L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  maxZoom:19,attribution:'© OpenStreetMap contributors'
+ }),
+ satellite:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
+  maxZoom:19,attribution:'Tiles © Esri'
+ }),
+ terrain:L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{
+  maxZoom:17,attribution:'© OpenTopoMap'
+ }),
+ dark:L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+  maxZoom:19,attribution:'© OpenStreetMap © CARTO'
+ })
+};
+
+let currentBase=basemaps.osm.addTo(map);
+
+const roadsLayer=L.geoJSON(null,{
+ style:f=>({
+  color:roadColor(f.properties.highway),
+  weight:2,opacity:.9
+ })
+}).addTo(map);
+
+const buildingsLayer=L.geoJSON(null,{
+ style:{
+  color:'#e99a47',
+  fillColor:'#ffb45d',
+  weight:.5,
+  fillOpacity:.6
+ }
+}).addTo(map);
+
+const poiLayer=L.geoJSON(null,{
+ pointToLayer:(f,ll)=>L.circleMarker(ll,{
+  radius:4,color:'#087f83',
+  fillColor:'#16c9b5',fillOpacity:.9,weight:1
+ }),
+ onEachFeature:(f,l)=>{
+  const p=f.properties||{};
+  l.bindPopup(
+   '<b>'+(p.name||p.amenity||p.shop||p.tourism||'POI')+'</b><br>'+
+   (p.amenity||p.shop||p.leisure||p.tourism||'')
+  );
+ }
+}).addTo(map);
+
+const nodeLayer=L.layerGroup().addTo(map);
+
+const boundaryLayer=L.geoJSON(null,{
+ style:{
+  color:'#f43f5e',
+  weight:2,
+  fillColor:'#f43f5e',
+  fillOpacity:.05
+ }
+}).addTo(map);
+
+let studyArea=null;
+let roads=[],buildings=[],pois=[];
+let roadChart=null,contextChart=null;
+
+/* =====================================================
+   2. STUDY AREA PRESETS
+===================================================== */
+
+const areas={
+ banjul:{
+  name:'Banjul',
+  bbox:[13.435,-16.605,13.475,-16.555],
+  center:[13.4549,-16.579],zoom:14
+ },
+ kanifing:{
+  name:'Kanifing / Serekunda',
+  bbox:[13.405,-16.72,13.48,-16.64],
+  center:[13.445,-16.675],zoom:13
+ },
+ brikama:{
+  name:'Brikama',
+  bbox:[13.255,-16.68,13.31,-16.62],
+  center:[13.282,-16.65],zoom:14
+ },
+ lamin:{
+  name:'Lamin / Abuko',
+  bbox:[13.37,-16.72,13.43,-16.65],
+  center:[13.4,-16.685],zoom:13
+ }
+};
+
+function setStatus(message){
+ document.getElementById('status').textContent='● '+message;
+}
+
+function setLog(message){
+ document.getElementById('log').textContent=message;
+}
+
+function setArea(feature){
+ studyArea=feature;
+ boundaryLayer.clearLayers();
+ boundaryLayer.addData(feature);
+ map.fitBounds(boundaryLayer.getBounds(),{padding:[20,20]});
+}
+
+function loadPreset(){
+ const p=areas[document.getElementById('preset').value];
+ if(!p)return;
+
+ setArea(turf.bboxPolygon(p.bbox));
+ map.setView(p.center,p.zoom);
+
+ setStatus(p.name.toUpperCase()+' SELECTED');
+ setLog('Study area: '+p.name+'\nReady to run OSM analysis.');
+}
+
+document.getElementById('loadArea').onclick=loadPreset;
+document.getElementById('preset').onchange=()=>{
+ if(document.getElementById('preset').value!=='custom')loadPreset();
+};
+loadPreset();
+
+/* =====================================================
+   3. CUSTOM AOI DRAWING
+===================================================== */
+
+const drawnItems=new L.FeatureGroup().addTo(map);
+
+map.addControl(new L.Control.Draw({
+ draw:{
+  polygon:{allowIntersection:false,showArea:true},
+  rectangle:true,
+  polyline:false,
+  circle:false,
+  circlemarker:false,
+  marker:false
+ },
+ edit:{featureGroup:drawnItems}
+}));
+
+map.on(L.Draw.Event.CREATED,e=>{
+ drawnItems.clearLayers();
+ drawnItems.addLayer(e.layer);
+ setArea(e.layer.toGeoJSON());
+ document.getElementById('preset').value='custom';
+ setStatus('CUSTOM STUDY AREA SELECTED');
+ setLog('Custom polygon loaded. Click RUN ANALYSIS.');
+});
+
+document.getElementById('drawArea').onclick=()=>{
+ new L.Draw.Polygon(map,{allowIntersection:false,showArea:true}).enable();
+};
+
+/* =====================================================
+   4. BASEMAP AND LAYER CONTROLS
+===================================================== */
+
+document.getElementById('basemap').onchange=e=>{
+ map.removeLayer(currentBase);
+ currentBase=basemaps[e.target.value];
+ currentBase.addTo(map);
+};
+
+function toggleLayer(id,layer){
+ document.getElementById(id).onchange=e=>{
+  if(e.target.checked)map.addLayer(layer);
+  else map.removeLayer(layer);
+ };
+}
+
+toggleLayer('showRoads',roadsLayer);
+toggleLayer('showBuildings',buildingsLayer);
+toggleLayer('showPOI',poiLayer);
+toggleLayer('showBoundary',boundaryLayer);
+toggleLayer('showNodes',nodeLayer);
+
+/* =====================================================
+   5. OSM QUERY
+===================================================== */
+
+function buildQuery(bbox){
+ const [w,s,e,n]=bbox;
+ let highway='["highway"]';
+
+ const type=document.getElementById('roadType').value;
+
+ if(type==='drive'){
+  highway='["highway"]["highway"!~"footway|path|steps|cycleway|pedestrian|bridleway"]';
+ }
+
+ if(type==='walk'){
+  highway='["highway"~"footway|path|pedestrian|steps|living_street|residential|service"]';
+ }
+
+ return `
+ [out:json][timeout:90];
+ (
+ way${highway}(${s},${w},${n},${e});
+ way["building"](${s},${w},${n},${e});
+ node["amenity"](${s},${w},${n},${e});
+ node["shop"](${s},${w},${n},${e});
+ node["leisure"](${s},${w},${n},${e});
+ node["tourism"](${s},${w},${n},${e});
+ );
+ out body geom;
+ `;
+}
+
+async function retrieveOSM(){
+ if(!studyArea)throw Error('Select a study area.');
+
+ const bbox=turf.bbox(studyArea);
+ const area=turf.area(studyArea)/1000000;
+
+ if(area>80){
+  throw Error('Study area exceeds 80 km². Select a smaller area.');
+ }
+
+ const query=buildQuery(bbox);
+ const servers=[
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter'
+ ];
+
+ let lastError;
+
+ for(const server of servers){
+  try{
+   const response=await fetch(server,{
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:'data='+encodeURIComponent(query)
+   });
+
+   if(!response.ok)throw Error('OSM server HTTP '+response.status);
+
+   return await response.json();
+  }catch(error){
+   lastError=error;
+  }
+ }
+
+ throw lastError||Error('OSM service unavailable.');
+}
+
+/* =====================================================
+   6. PROCESS OSM FEATURES
+===================================================== */
+
+function insideAOI(feature){
+ try{
+  return turf.booleanPointInPolygon(turf.centroid(feature),studyArea);
+ }catch(e){return false}
+}
+
+function makeLine(way){
+ if(!way.geometry||way.geometry.length<2)return null;
+
+ return {
+  type:'Feature',
+  properties:{...way.tags,osm_id:way.id},
+  geometry:{
+   type:'LineString',
+   coordinates:way.geometry.map(p=>[p.lon,p.lat])
+  }
+ };
+}
+
+function makePolygon(way){
+ if(!way.geometry||way.geometry.length<4)return null;
+
+ let coords=way.geometry.map(p=>[p.lon,p.lat]);
+
+ const first=coords[0];
+ const last=coords[coords.length-1];
+
+ if(first[0]!==last[0]||first[1]!==last[1]){
+  coords.push(first);
+ }
+
+ try{
+  return turf.polygon([coords],{...way.tags,osm_id:way.id});
+ }catch(e){return null}
+}
+
+function processData(data){
+ roads=[];
+ buildings=[];
+ pois=[];
+
+ for(const el of data.elements||[]){
+
+  if(el.type==='node'&&el.tags){
+   if(studyArea&&turf.booleanPointInPolygon(
+    turf.point([el.lon,el.lat]),studyArea
+   )){
+    pois.push(turf.point([el.lon,el.lat],{
+     ...el.tags,osm_id:el.id
+    }));
+   }
+  }
+
+  if(el.type!=='way')continue;
+
+  const tags=el.tags||{};
+
+  if(tags.highway){
+   const f=makeLine(el);
+   if(f&&insideAOI(f))roads.push(f);
+  }
+
+  if(tags.building){
+   const f=makePolygon(el);
+   if(f&&insideAOI(f))buildings.push(f);
+  }
+ }
+}
+
+/* =====================================================
+   7. NETWORK NODE ESTIMATION
+===================================================== */
+
+function calculateNodes(){
+ const nodes=new Map();
+ const tolerance=0.00014;
+
+ roads.forEach(f=>{
+  const c=f.geometry.coordinates;
+
+  [c[0],c[c.length-1]].forEach(p=>{
+   const key=
+    Math.round(p[0]/tolerance)+':'+
+    Math.round(p[1]/tolerance);
+
+   if(!nodes.has(key)){
+    nodes.set(key,{xy:p,degree:0});
+   }
+
+   nodes.get(key).degree++;
+  });
+ });
+
+ return [...nodes.values()].filter(n=>n.degree>=2);
+}
+
+/* =====================================================
+   8. ROAD CLASS COLOURS
+===================================================== */
+
+function roadColor(type){
+ const colors={
+  motorway:'#e34a4a',
+  trunk:'#f97316',
+  primary:'#eab308',
+  secondary:'#60a5fa',
+  tertiary:'#22c55e',
+  residential:'#3b82f6',
+  unclassified:'#8b9bb0',
+  service:'#a78bfa',
+  footway:'#d6a5e8',
+  path:'#d6a5e8'
+ };
+ return colors[type]||'#6d91b7';
+}
+
+/* =====================================================
+   9. UPDATE MAP
+===================================================== */
+
+function updateMap(){
+ roadsLayer.clearLayers();
+ buildingsLayer.clearLayers();
+ poiLayer.clearLayers();
+ nodeLayer.clearLayers();
+
+ roadsLayer.addData(roads);
+ buildingsLayer.addData(buildings);
+ poiLayer.addData(pois);
+
+ const nodes=calculateNodes();
+
+ nodes.forEach(n=>{
+  L.circleMarker([n.xy[1],n.xy[0]],{
+   radius:3,
+   color:'#f43f5e',
+   fillColor:'#fb7185',
+   fillOpacity:.9,
+   weight:1
+  }).bindTooltip('Endpoint degree: '+n.degree)
+   .addTo(nodeLayer);
+ });
+}
+
+/* =====================================================
+   10. INDICATORS AND CHARTS
+===================================================== */
+
+function number(v,d=1){
+ return Number(v).toLocaleString(undefined,{
+  maximumFractionDigits:d
+ });
+}
+
+function updateAnalytics(){
+
+ const totalLength=roads.reduce(
+  (sum,f)=>sum+turf.length(f,{units:'kilometers'}),0
+ );
+
+ const area=turf.area(studyArea)/1000000;
+ const density=area?totalLength/area:0;
+ const nodes=calculateNodes();
+
+ document.getElementById('roadLength').textContent=number(totalLength,2);
+ document.getElementById('roadCount').textContent=number(roads.length,0);
+ document.getElementById('nodeCount').textContent=number(nodes.length,0);
+ document.getElementById('buildingCount').textContent=number(buildings.length,0);
+ document.getElementById('poiCount').textContent=number(pois.length,0);
+ document.getElementById('density').textContent=number(density,2);
+
+ const classes={};
+
+ roads.forEach(f=>{
+  const type=f.properties.highway||'unknown';
+  classes[type]=(classes[type]||0)+1;
+ });
+
+ const sorted=Object.entries(classes)
+  .sort((a,b)=>b[1]-a[1])
+  .slice(0,9);
+
+ if(roadChart)roadChart.destroy();
+
+ roadChart=new Chart(document.getElementById('roadChart'),{
+  type:'bar',
+  data:{
+   labels:sorted.map(x=>x[0]),
+   datasets:[{
+    data:sorted.map(x=>x[1]),
+    backgroundColor:'#4d9ef0',
+    borderRadius:3
+   }]
+  },
+  options:{
+   responsive:true,
+   maintainAspectRatio:true,
+   plugins:{legend:{display:false}},
+   scales:{
+    x:{ticks:{color:'#a9bbcf',font:{size:9}},grid:{display:false}},
+    y:{ticks:{color:'#a9bbcf',font:{size:9}},grid:{color:'#293d53'}}
+   }
+  }
+ });
+
+ if(contextChart)contextChart.destroy();
+
+ contextChart=new Chart(document.getElementById('contextChart'),{
+  type:'doughnut',
+  data:{
+   labels:['Road segments','Buildings','POIs'],
+   datasets:[{
+    data:[roads.length,buildings.length,pois.length],
+    backgroundColor:['#4d9ef0','#f4a64e','#13b8a6'],
+    borderWidth:0
+   }]
+  },
+  options:{
+   responsive:true,
+   maintainAspectRatio:true,
+   plugins:{
+    legend:{
+     position:'bottom',
+     labels:{color:'#b7c7d9',boxWidth:9,font:{size:9}}
+    }
+   }
+  }
+ });
+
+ const mean=roads.length?totalLength/roads.length*1000:0;
+ const three=nodes.filter(n=>n.degree>=3).length;
+
+ const profile=[
+  ['Study area',number(area,2)+' km²'],
+  ['Total road length',number(totalLength,2)+' km'],
+  ['Mean segment length',number(mean,0)+' m'],
+  ['Estimated nodes',number(nodes.length,0)],
+  ['Nodes with degree 3+',number(three,0)],
+  ['Road density',number(density,2)+' km/km²'],
+  ['Building count',number(buildings.length,0)],
+  ['POI count',number(pois.length,0)]
+ ];
+
+ document.getElementById('profile').innerHTML=
+  profile.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
+}
+
+/* =====================================================
+   11. RUN ANALYSIS
+===================================================== */
+
+async function runAnalysis(){
+
+ const button=document.getElementById('run');
+ button.disabled=true;
+
+ setStatus('RETRIEVING OSM DATA');
+ setLog('Connecting to OpenStreetMap Overpass service...\nPlease wait.');
+
+ try{
+  const data=await retrieveOSM();
+
+  setLog('Processing street network and urban features...');
+
+  processData(data);
+  updateMap();
+  updateAnalytics();
+
+  setStatus('ANALYSIS COMPLETED');
+
+  setLog(
+   'Analysis completed successfully.\n\n'+
+   'Road segments: '+roads.length+'\n'+
+   'Buildings: '+buildings.length+'\n'+
+   'POIs: '+pois.length+'\n\n'+
+   'Source: OpenStreetMap contributors.\n'+
+   'Connectivity: estimated from snapped endpoints.'
+  );
+
+ }catch(error){
+
+  setStatus('ANALYSIS FAILED');
+
+  setLog(
+   'Analysis could not be completed.\n\n'+
+   error.message+'\n\n'+
+   'Try a smaller study area or retry later. '+
+   'Public OSM services may be busy or rate-limited.'
+  );
+
+ }finally{
+  button.disabled=false;
+ }
+}
+
+document.getElementById('run').onclick=runAnalysis;
+
+/* =====================================================
+   12. BOUNDARY GEOJSON UPLOAD
+===================================================== */
+
+document.getElementById('boundaryFile').onchange=async e=>{
+
+ const file=e.target.files[0];
+ if(!file)return;
+
+ try{
+  const json=JSON.parse(await file.text());
+
+  let feature;
+
+  if(json.type==='FeatureCollection'){
+   feature=json.features.find(f=>
+    ['Polygon','MultiPolygon'].includes(f.geometry.type)
+   );
+  }else if(json.type==='Feature'){
+   feature=json;
+  }
+
+  if(!feature)throw Error('No polygon found.');
+
+  setArea(feature);
+  document.getElementById('preset').value='custom';
+
+  setStatus('BOUNDARY LOADED');
+  setLog('Boundary loaded: '+file.name+'\nClick RUN ANALYSIS.');
+
+ }catch(error){
+  alert('Boundary error: '+error.message);
+ }
+};
+
+/* =====================================================
+   13. EXPORT FUNCTIONS
+===================================================== */
+
+function downloadFile(name,content,type){
+ const blob=new Blob([content],{type});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement('a');
+
+ a.href=url;
+ a.download=name;
+ a.click();
+
+ URL.revokeObjectURL(url);
+}
+
+document.getElementById('exportCSV').onclick=()=>{
+
+ if(!roads.length)return alert('Run analysis first.');
+
+ const rows=[
+  ['osm_id','highway','name','length_km','surface','lanes','maxspeed']
+ ];
+
+ roads.forEach(f=>{
+  rows.push([
+   f.properties.osm_id,
+   f.properties.highway||'',
+   f.properties.name||'',
+   turf.length(f,{units:'kilometers'}),
+   f.properties.surface||'',
+   f.properties.lanes||'',
+   f.properties.maxspeed||''
+  ]);
+ });
+
+ const csv=rows.map(r=>
+  r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(',')
+ ).join('\n');
+
+ downloadFile('GBoS_Urban_Street_Indicators.csv',csv,'text/csv');
+};
+
+document.getElementById('exportGeo').onclick=()=>{
+
+ if(!roads.length)return alert('Run analysis first.');
+
+ downloadFile(
+  'GBoS_Urban_Street_Network.geojson',
+  JSON.stringify({type:'FeatureCollection',features:roads},null,2),
+  'application/geo+json'
+ );
+};
+
+document.getElementById('exportBuildings').onclick=()=>{
+
+ if(!buildings.length)return alert('Run analysis first.');
+
+ downloadFile(
+  'GBoS_Urban_Buildings.geojson',
+  JSON.stringify({type:'FeatureCollection',features:buildings},null,2),
+  'application/geo+json'
+ );
+};
+
+/* =====================================================
+   14. RESET DASHBOARD
+===================================================== */
+
+document.getElementById('reset').onclick=()=>{
+
+ roads=[];
+ buildings=[];
+ pois=[];
+
+ roadsLayer.clearLayers();
+ buildingsLayer.clearLayers();
+ poiLayer.clearLayers();
+ nodeLayer.clearLayers();
+
+ [
+  'roadLength','roadCount','nodeCount',
+  'buildingCount','poiCount','density'
+ ].forEach(id=>{
+  document.getElementById(id).textContent='—';
+ });
+
+ document.getElementById('profile').innerHTML=
+  '<tr><td>Analysis</td><td>Awaiting data</td></tr>';
+
+ if(roadChart)roadChart.destroy();
+ if(contextChart)contextChart.destroy();
+
+ setStatus('READY');
+ setLog('Dashboard reset.');
+
+ loadPreset();
+};
+
+</script>
+</body>
+</html>
